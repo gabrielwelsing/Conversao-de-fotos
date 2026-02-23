@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -50,7 +51,8 @@
         }
 
         .logo-image {
-            height: 60px; /* Ajuste conforme necessário para o seu logo */
+            height: 60px;
+            /* Ajuste conforme necessário para o seu logo */
             width: auto;
         }
 
@@ -58,7 +60,7 @@
             font-size: 2.2rem;
             font-weight: 700;
             color: var(--text-light);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
             text-align: center;
             width: 100%;
         }
@@ -113,7 +115,7 @@
             border-left: 5px solid var(--warning);
             padding: 20px 25px;
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
             font-size: 16px;
             color: var(--text-light);
             display: flex;
@@ -124,7 +126,8 @@
 
         .task-item.completed {
             border-left-color: var(--success);
-            background-color: rgba(40, 167, 69, 0.1); /* Fundo esverdeado sutil */
+            background-color: rgba(40, 167, 69, 0.1);
+            /* Fundo esverdeado sutil */
         }
 
         .task-item.fade-out {
@@ -155,9 +158,15 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
+
         .spinning {
             animation: spin 2s linear infinite;
         }
@@ -169,7 +178,8 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7); /* Fundo escuro transparente */
+            background-color: rgba(0, 0, 0, 0.7);
+            /* Fundo escuro transparente */
             display: flex;
             align-items: center;
             justify-content: center;
@@ -191,12 +201,12 @@
             border-radius: 15px;
             width: 90%;
             max-width: 450px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
-            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             transform: translateY(-20px);
             transition: all 0.3s ease;
         }
-        
+
         #modal-overlay.active .modal-box {
             transform: translateY(0);
         }
@@ -228,20 +238,21 @@
         .modal-input {
             width: 100%;
             padding: 12px 15px;
-            background-color: rgba(255,255,255,0.05);
+            background-color: rgba(255, 255, 255, 0.05);
             border: 2px solid #444;
             border-radius: 8px;
             color: var(--text-light);
             font-size: 1rem;
             outline: none;
-            box-sizing: border-box; /* Garante que o padding não aumente a largura */
+            box-sizing: border-box;
+            /* Garante que o padding não aumente a largura */
             transition: border-color 0.3s;
         }
 
         .modal-input:focus {
             border-color: var(--primary-blue);
         }
-        
+
         .modal-input::placeholder {
             color: #666;
         }
@@ -307,8 +318,8 @@
             border-radius: 15px;
             width: 90%;
             max-width: 400px;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
-            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             text-align: center;
         }
 
@@ -347,6 +358,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- TELA DE LOGIN -->
     <div id="login-overlay">
@@ -354,10 +366,12 @@
             <h2 class="login-title">Acesso Restrito</h2>
             <div id="login-error">Credenciais inválidas.</div>
             <div class="input-group">
-                <input type="email" id="email-input" class="modal-input" placeholder="E-mail" style="margin-bottom: 15px;">
+                <input type="email" id="email-input" class="modal-input" placeholder="E-mail"
+                    style="margin-bottom: 15px;">
             </div>
             <div class="input-group">
-                <input type="password" id="password-input" class="modal-input" placeholder="Senha" style="margin-bottom: 20px;">
+                <input type="password" id="password-input" class="modal-input" placeholder="Senha"
+                    style="margin-bottom: 20px;">
             </div>
             <button id="login-btn" class="modal-btn">Entrar</button>
         </div>
@@ -376,7 +390,7 @@
             Arraste e solte suas imagens aqui<br>
             (Pode soltar vários lotes em paralelo)
         </div>
-        
+
         <div id="task-queue"></div>
     </main>
 
@@ -385,7 +399,8 @@
             <h2 class="modal-title">Número da NS</h2>
             <div class="input-group">
                 <label class="input-label">Requerido <span class="required-mark">*</span></label>
-                <input type="text" id="ns-input" class="modal-input" placeholder="Digite 10 caracteres (Ex: NS12345678)" maxlength="10">
+                <input type="text" id="ns-input" class="modal-input" placeholder="Digite 10 caracteres (Ex: NS12345678)"
+                    maxlength="10">
                 <span id="char-count" class="char-counter">0/10</span>
             </div>
             <button id="confirm-btn" class="modal-btn" disabled>Confirmar</button>
@@ -396,16 +411,16 @@
         const { jsPDF } = window.jspdf;
         const dropZone = document.getElementById('drop-zone');
         const taskQueue = document.getElementById('task-queue');
-        
+
         // --- FIREBASE CONFIGURATION ---
         // SUBSTITUA ESTAS CHAVES PELAS REAIS DO SEU PROJETO FIREBASE
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyCkCo1J5ZPYz6G0pcXFrgiL70fON7pVSPE",
+            authDomain: "conversao-fotos.firebaseapp.com",
+            projectId: "conversao-fotos",
+            storageBucket: "conversao-fotos.firebasestorage.app",
+            messagingSenderId: "322589561472",
+            appId: "1:322589561472:web:dad7aafd6808613cc8cc65"
         };
 
         // Initialize Firebase
@@ -437,7 +452,7 @@
         loginBtn.addEventListener('click', () => {
             const email = emailInput.value;
             const password = passwordInput.value;
-            
+
             if (!email || !password) {
                 loginError.textContent = 'Preencha e-mail e senha.';
                 loginError.style.display = 'block';
@@ -491,7 +506,7 @@
             nsInput.value = '';
             charCount.textContent = '0/10';
             confirmBtn.disabled = true;
-            
+
             // Mostra a modal
             modalOverlay.classList.add('active');
             nsInput.focus();
@@ -506,7 +521,7 @@
         nsInput.addEventListener('input', (e) => {
             const length = e.target.value.length;
             charCount.textContent = `${length}/10`;
-            
+
             // Ativa o botão apenas se tiver exatamente 10 caracteres
             if (length === 10) {
                 confirmBtn.disabled = false;
@@ -523,10 +538,10 @@
                 modalResolve(fileName); // Resolve a promessa com o nome digitado
             }
         });
-        
+
         // Permitir confirmar com Enter se o botão estiver ativo
         nsInput.addEventListener('keypress', (e) => {
-            if(e.key === 'Enter' && !confirmBtn.disabled) {
+            if (e.key === 'Enter' && !confirmBtn.disabled) {
                 confirmBtn.click();
             }
         });
@@ -559,10 +574,10 @@
             const baseName = await getFileNameFromModal();
 
             // Se por algum motivo o nome vier vazio (não deve acontecer com a validação), cancela
-            if (!baseName) return; 
+            if (!baseName) return;
 
             const taskId = 'task-' + Date.now();
-            
+
             const taskElement = document.createElement('div');
             taskElement.className = 'task-item';
             taskElement.id = taskId;
@@ -591,18 +606,18 @@
             for (let i = 0; i < batches.length; i++) {
                 let currentFileName = batches.length > 1 ? `${baseName}_Parte${i + 1}.pdf` : `${baseName}.pdf`;
                 statusText.innerText = `Gerando ${currentFileName} (${i + 1}/${batches.length})...`;
-                
+
                 statusIcon.innerText = "⚙️";
                 statusIcon.classList.add("spinning");
-                
+
                 await new Promise(resolve => setTimeout(resolve, 100)); // Pausa ligeiramente maior para UI
-                
+
                 await createPDF(batches[i], currentFileName);
             }
 
             taskElement.classList.add('completed');
             statusText.innerText = `Processo concluído com sucesso!`;
-            
+
             statusIcon.classList.remove("spinning");
             statusIcon.innerText = "✅";
 
@@ -620,19 +635,19 @@
 
         async function createPDF(imageFiles, fileName) {
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            
+
             const margin = 10;
-            const contentWidth = 210 - (margin * 3); 
-            const contentHeight = 297 - (margin * 3); 
-            
+            const contentWidth = 210 - (margin * 3);
+            const contentHeight = 297 - (margin * 3);
+
             const cellWidth = contentWidth / 2;
             const cellHeight = contentHeight / 2;
 
             const positions = [
-                { x: margin, y: margin }, 
-                { x: margin * 2 + cellWidth, y: margin }, 
-                { x: margin, y: margin * 2 + cellHeight }, 
-                { x: margin * 2 + cellWidth, y: margin * 2 + cellHeight } 
+                { x: margin, y: margin },
+                { x: margin * 2 + cellWidth, y: margin },
+                { x: margin, y: margin * 2 + cellHeight },
+                { x: margin * 2 + cellWidth, y: margin * 2 + cellHeight }
             ];
 
             for (let i = 0; i < imageFiles.length; i++) {
@@ -673,9 +688,9 @@
                     img.onload = () => {
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        
+
                         if (img.width > img.height) {
-                            canvas.width = img.height; 
+                            canvas.width = img.height;
                             canvas.height = img.width;
                             ctx.translate(canvas.width / 2, canvas.height / 2);
                             ctx.rotate(90 * Math.PI / 180);
@@ -685,12 +700,12 @@
                             canvas.height = img.height;
                             ctx.drawImage(img, 0, 0, img.width, img.height);
                         }
-                        
-                        resolve({ 
-                            src: canvas.toDataURL('image/jpeg', 0.9), 
-                            type: 'JPEG', 
-                            width: canvas.width, 
-                            height: canvas.height 
+
+                        resolve({
+                            src: canvas.toDataURL('image/jpeg', 0.9),
+                            type: 'JPEG',
+                            width: canvas.width,
+                            height: canvas.height
                         });
                     };
                     img.src = e.target.result;
@@ -701,4 +716,5 @@
         }
     </script>
 </body>
+
 </html>
