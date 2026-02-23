@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RO Engenharia - Conversão Fotos PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <style>
+        /* --- ESTILOS GERAIS E TEMA ESCURO --- */
+        :root {
+            --bg-dark: #121212;
+            --bg-card: #1e1e24;
+            --primary-blue: #007bff;
+            --accent-blue: #4a90e2;
+            --text-light: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --success: #28a745;
+            --warning: #ffc107;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: var(--text-light);
+            min-height: 100vh;
+        }
+
+        /* --- CABEÇALHO --- */
+        header {
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .logo-container {
+            align-self: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .logo-image {
+            height: 60px; /* Ajuste conforme necessário para o seu logo */
+            width: auto;
+        }
+
+        .main-title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text-light);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 100%;
+        }
+
+        /* --- ÁREA PRINCIPAL --- */
+        .main-container {
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* --- DROP ZONE ESTILIZADO --- */
+        #drop-zone {
+            width: 100%;
+            min-height: 280px;
+            border: 3px dashed var(--primary-blue);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            /* Gradiente azulado escuro e transparente */
+            background: linear-gradient(145deg, rgba(30, 30, 36, 0.6), rgba(0, 123, 255, 0.1));
+            color: var(--text-light);
+            font-size: 1.2rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+        }
+
+        #drop-zone.dragover {
+            background: rgba(0, 123, 255, 0.2);
+            border-color: var(--accent-blue);
+            transform: scale(1.02);
+        }
+
+        /* --- FILA DE PROCESSAMENTO --- */
+        #task-queue {
+            width: 100%;
+            margin-top: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding-bottom: 50px;
+        }
+
+        .task-item {
+            background-color: var(--bg-card);
+            border-left: 5px solid var(--warning);
+            padding: 20px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-size: 16px;
+            color: var(--text-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: opacity 0.5s ease, transform 0.5s ease, background-color 0.3s;
+        }
+
+        .task-item.completed {
+            border-left-color: var(--success);
+            background-color: rgba(40, 167, 69, 0.1); /* Fundo esverdeado sutil */
+        }
+
+        .task-item.fade-out {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+
+        .task-text {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .task-title {
+            font-weight: bold;
+            font-size: 1.1rem;
+            letter-spacing: 1px;
+        }
+
+        .task-status {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .task-icon {
+            font-size: 24px;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinning {
+            animation: spin 2s linear infinite;
+        }
+
+        /* --- MODAL CUSTOMIZADO (DIÁLOGO) --- */
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7); /* Fundo escuro transparente */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        #modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-box {
+            background: linear-gradient(145deg, #2a2a35, #1e1e24);
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+        }
+        
+        #modal-overlay.active .modal-box {
+            transform: translateY(0);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: var(--text-light);
+        }
+
+        .input-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+
+        .input-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-light);
+        }
+
+        .required-mark {
+            color: #ff4d4d;
+            margin-left: 4px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 12px 15px;
+            background-color: rgba(255,255,255,0.05);
+            border: 2px solid #444;
+            border-radius: 8px;
+            color: var(--text-light);
+            font-size: 1rem;
+            outline: none;
+            box-sizing: border-box; /* Garante que o padding não aumente a largura */
+            transition: border-color 0.3s;
+        }
+
+        .modal-input:focus {
+            border-color: var(--primary-blue);
+        }
+        
+        .modal-input::placeholder {
+            color: #666;
+        }
+
+        .char-counter {
+            position: absolute;
+            right: 5px;
+            bottom: -20px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: white;
+            background: linear-gradient(90deg, var(--primary-blue), var(--accent-blue));
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .modal-btn:disabled {
+            background: #555;
+            color: #888;
+            cursor: not-allowed;
+            box-shadow: none;
+            opacity: 0.7;
+        }
+
+        .modal-btn:not(:disabled):hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+        }
+
+        /* --- TELA DE LOGIN --- */
+        #login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            transition: opacity 0.5s ease;
+        }
+
+        #login-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .login-box {
+            background: linear-gradient(145deg, #2a2a35, #1e1e24);
+            padding: 40px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+        }
+
+        .login-title {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            color: var(--text-light);
+        }
+
+        #login-error {
+            color: #ff4d4d;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        /* --- BOTÃO LOGOUT --- */
+        #logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 0;
+            background: rgba(255, 77, 77, 0.2);
+            color: #ff4d4d;
+            border: 1px solid #ff4d4d;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            display: none;
+        }
+
+        #logout-btn:hover {
+            background: #ff4d4d;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- TELA DE LOGIN -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2 class="login-title">Acesso Restrito</h2>
+            <div id="login-error">Credenciais inválidas.</div>
+            <div class="input-group">
+                <input type="email" id="email-input" class="modal-input" placeholder="E-mail" style="margin-bottom: 15px;">
+            </div>
+            <div class="input-group">
+                <input type="password" id="password-input" class="modal-input" placeholder="Senha" style="margin-bottom: 20px;">
+            </div>
+            <button id="login-btn" class="modal-btn">Entrar</button>
+        </div>
+    </div>
+
+    <header>
+        <div class="logo-container">
+            <img src="image_0.png" alt="RO Engenharia Logo" class="logo-image">
+        </div>
+        <h1 class="main-title">Conversão Fotos PDF</h1>
+        <button id="logout-btn">Sair</button>
+    </header>
+
+    <main class="main-container">
+        <div id="drop-zone">
+            Arraste e solte suas imagens aqui<br>
+            (Pode soltar vários lotes em paralelo)
+        </div>
+        
+        <div id="task-queue"></div>
+    </main>
+
+    <div id="modal-overlay">
+        <div class="modal-box">
+            <h2 class="modal-title">Número da NS</h2>
+            <div class="input-group">
+                <label class="input-label">Requerido <span class="required-mark">*</span></label>
+                <input type="text" id="ns-input" class="modal-input" placeholder="Digite 10 caracteres (Ex: NS12345678)" maxlength="10">
+                <span id="char-count" class="char-counter">0/10</span>
+            </div>
+            <button id="confirm-btn" class="modal-btn" disabled>Confirmar</button>
+        </div>
+    </div>
+
+    <script>
+        const { jsPDF } = window.jspdf;
+        const dropZone = document.getElementById('drop-zone');
+        const taskQueue = document.getElementById('task-queue');
+        
+        // --- FIREBASE CONFIGURATION ---
+        // SUBSTITUA ESTAS CHAVES PELAS REAIS DO SEU PROJETO FIREBASE
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // --- AUTH LOGIC ---
+        const loginOverlay = document.getElementById('login-overlay');
+        const emailInput = document.getElementById('email-input');
+        const passwordInput = document.getElementById('password-input');
+        const loginBtn = document.getElementById('login-btn');
+        const loginError = document.getElementById('login-error');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // Escutar estado de autenticação
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                // Logado
+                loginOverlay.classList.add('hidden');
+                logoutBtn.style.display = 'block';
+            } else {
+                // Não logado
+                loginOverlay.classList.remove('hidden');
+                logoutBtn.style.display = 'none';
+            }
+        });
+
+        // Evento de Login
+        loginBtn.addEventListener('click', () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            
+            if (!email || !password) {
+                loginError.textContent = 'Preencha e-mail e senha.';
+                loginError.style.display = 'block';
+                return;
+            }
+
+            loginBtn.innerText = 'Entrando...';
+            loginBtn.disabled = true;
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then(() => {
+                    loginError.style.display = 'none';
+                    loginBtn.innerText = 'Entrar';
+                    loginBtn.disabled = false;
+                    emailInput.value = '';
+                    passwordInput.value = '';
+                })
+                .catch((error) => {
+                    console.error('Erro de autenticação:', error);
+                    loginError.textContent = 'Credenciais inválidas ou erro no login.';
+                    loginError.style.display = 'block';
+                    loginBtn.innerText = 'Entrar';
+                    loginBtn.disabled = false;
+                });
+        });
+
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loginBtn.click();
+            }
+        });
+
+        // Evento de Logout
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut();
+        });
+
+        // Elementos da Modal
+        const modalOverlay = document.getElementById('modal-overlay');
+        const nsInput = document.getElementById('ns-input');
+        const charCount = document.getElementById('char-count');
+        const confirmBtn = document.getElementById('confirm-btn');
+
+        let modalResolve; // Variável para armazenar a resolução da Promessa da modal
+
+        // --- LÓGICA DA MODAL ---
+
+        // Função para abrir a modal e esperar uma resposta
+        function getFileNameFromModal() {
+            // Limpa o input anterior
+            nsInput.value = '';
+            charCount.textContent = '0/10';
+            confirmBtn.disabled = true;
+            
+            // Mostra a modal
+            modalOverlay.classList.add('active');
+            nsInput.focus();
+
+            // Retorna uma Promessa que será resolvida quando o usuário clicar em Confirmar
+            return new Promise((resolve) => {
+                modalResolve = resolve;
+            });
+        }
+
+        // Monitora a digitação para validação (exatamente 10 caracteres)
+        nsInput.addEventListener('input', (e) => {
+            const length = e.target.value.length;
+            charCount.textContent = `${length}/10`;
+            
+            // Ativa o botão apenas se tiver exatamente 10 caracteres
+            if (length === 10) {
+                confirmBtn.disabled = false;
+            } else {
+                confirmBtn.disabled = true;
+            }
+        });
+
+        // Ação do botão Confirmar
+        confirmBtn.addEventListener('click', () => {
+            const fileName = nsInput.value;
+            modalOverlay.classList.remove('active'); // Fecha modal
+            if (modalResolve) {
+                modalResolve(fileName); // Resolve a promessa com o nome digitado
+            }
+        });
+        
+        // Permitir confirmar com Enter se o botão estiver ativo
+        nsInput.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter' && !confirmBtn.disabled) {
+                confirmBtn.click();
+            }
+        });
+
+
+        // --- LÓGICA DE DRAG AND DROP E PROCESSAMENTO ---
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+
+            const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+
+            if (files.length === 0) {
+                alert('Por favor, arraste apenas arquivos de imagem.');
+                return;
+            }
+
+            // *** SUBSTITUI O PROMPT PELA CHAMADA DA MODAL ***
+            // O código espera (await) o usuário digitar e confirmar na modal
+            const baseName = await getFileNameFromModal();
+
+            // Se por algum motivo o nome vier vazio (não deve acontecer com a validação), cancela
+            if (!baseName) return; 
+
+            const taskId = 'task-' + Date.now();
+            
+            const taskElement = document.createElement('div');
+            taskElement.className = 'task-item';
+            taskElement.id = taskId;
+            // Estrutura HTML atualizada para refletir o visual de título e subtítulo
+            taskElement.innerHTML = `
+                <div class="task-text">
+                    <span class="task-title">${baseName}</span>
+                    <span class="task-status" id="status-${taskId}">Preparando ${files.length} imagens...</span>
+                </div>
+                <div class="task-icon" id="icon-${taskId}">⏳</div>
+            `;
+            taskQueue.appendChild(taskElement);
+            // Faz scroll suave até o novo item da fila
+            taskElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
+
+
+            const statusText = document.getElementById(`status-${taskId}`);
+            const statusIcon = document.getElementById(`icon-${taskId}`);
+
+            const limit = 150;
+            const batches = [];
+            for (let i = 0; i < files.length; i += limit) {
+                batches.push(files.slice(i, i + limit));
+            }
+
+            for (let i = 0; i < batches.length; i++) {
+                let currentFileName = batches.length > 1 ? `${baseName}_Parte${i + 1}.pdf` : `${baseName}.pdf`;
+                statusText.innerText = `Gerando ${currentFileName} (${i + 1}/${batches.length})...`;
+                
+                statusIcon.innerText = "⚙️";
+                statusIcon.classList.add("spinning");
+                
+                await new Promise(resolve => setTimeout(resolve, 100)); // Pausa ligeiramente maior para UI
+                
+                await createPDF(batches[i], currentFileName);
+            }
+
+            taskElement.classList.add('completed');
+            statusText.innerText = `Processo concluído com sucesso!`;
+            
+            statusIcon.classList.remove("spinning");
+            statusIcon.innerText = "✅";
+
+            setTimeout(() => {
+                taskElement.classList.add('fade-out');
+                setTimeout(() => {
+                    if (taskElement.parentNode) {
+                        taskElement.parentNode.removeChild(taskElement);
+                    }
+                }, 500);
+            }, 120000); // 2 minutos
+        });
+
+        // --- FUNÇÕES AUXILIARES (createPDF e loadImage - sem alterações na lógica) ---
+
+        async function createPDF(imageFiles, fileName) {
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            
+            const margin = 10;
+            const contentWidth = 210 - (margin * 3); 
+            const contentHeight = 297 - (margin * 3); 
+            
+            const cellWidth = contentWidth / 2;
+            const cellHeight = contentHeight / 2;
+
+            const positions = [
+                { x: margin, y: margin }, 
+                { x: margin * 2 + cellWidth, y: margin }, 
+                { x: margin, y: margin * 2 + cellHeight }, 
+                { x: margin * 2 + cellWidth, y: margin * 2 + cellHeight } 
+            ];
+
+            for (let i = 0; i < imageFiles.length; i++) {
+                if (i > 0 && i % 4 === 0) {
+                    pdf.addPage();
+                }
+
+                const positionIndex = i % 4;
+                const imgData = await loadImage(imageFiles[i]);
+
+                const imgRatio = imgData.width / imgData.height;
+                const cellRatio = cellWidth / cellHeight;
+
+                let finalWidth, finalHeight;
+
+                if (imgRatio > cellRatio) {
+                    finalWidth = cellWidth;
+                    finalHeight = cellWidth / imgRatio;
+                } else {
+                    finalHeight = cellHeight;
+                    finalWidth = cellHeight * imgRatio;
+                }
+
+                const xOffset = positions[positionIndex].x + ((cellWidth - finalWidth) / 2);
+                const yOffset = positions[positionIndex].y + ((cellHeight - finalHeight) / 2);
+
+                pdf.addImage(imgData.src, imgData.type, xOffset, yOffset, finalWidth, finalHeight);
+            }
+
+            pdf.save(fileName);
+        }
+
+        function loadImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        if (img.width > img.height) {
+                            canvas.width = img.height; 
+                            canvas.height = img.width;
+                            ctx.translate(canvas.width / 2, canvas.height / 2);
+                            ctx.rotate(90 * Math.PI / 180);
+                            ctx.drawImage(img, -img.width / 2, -img.height / 2, img.width, img.height);
+                        } else {
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            ctx.drawImage(img, 0, 0, img.width, img.height);
+                        }
+                        
+                        resolve({ 
+                            src: canvas.toDataURL('image/jpeg', 0.9), 
+                            type: 'JPEG', 
+                            width: canvas.width, 
+                            height: canvas.height 
+                        });
+                    };
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>

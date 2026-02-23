@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de PDF - 4 Fotos por Folha</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+        #drop-zone {
+            width: 80%;
+            max-width: 600px;
+            height: 300px;
+            border: 3px dashed #007bff;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            background-color: #fff;
+            color: #555;
+            font-size: 18px;
+            transition: background-color 0.3s;
+            cursor: pointer;
+        }
+        #drop-zone.dragover {
+            background-color: #e2eefb;
+            border-color: #0056b3;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #333;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="drop-zone">
+        Arraste e solte suas imagens aqui<br>
+        (Mais de 150 fotos serão divididas em vários PDFs)
+    </div>
+    <div id="status">Aguardando imagens...</div>
+
+    <script>
+        const { jsPDF } = window.jspdf;
+        const dropZone = document.getElementById('drop-zone');
+        const statusDiv = document.getElementById('status');
+
+        // Efeitos visuais do Drag and Drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        // Evento principal ao soltar os arquivos
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+
+            // Filtra apenas arquivos de imagem
+            const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+
+            if (files.length === 0) {
+                alert('Por favor, arraste apenas arquivos de imagem.');
+                return;
+            }
+
+            // Pede o nome do arquivo imediatamente
+            let baseName = prompt(`Você adicionou ${files.length} imagens.\nQual será o nome do arquivo PDF?`, "Fotos_Obra");
+            if (!baseName) return; // Cancela se o usuário não digitar nada
+
+            statusDiv.innerText = `Processando ${files.length} imagens... Por favor, aguarde.`;
+
+            // Lógica de divisão: Máximo 150 imagens por PDF
+            const limit = 150;
+            const batches = [];
+            for (let i = 0; i < files.length; i += limit) {
+                batches.push(files.slice(i, i + limit));
+            }
+
+            // Processa cada lote de forma assíncrona
+            for (let i = 0; i < batches.length; i++) {
+                let currentFileName = batches.length > 1 ? `${baseName}_Parte${i + 1}.pdf` : `${baseName}.pdf`;
+                statusDiv.innerText = `Gerando ${currentFileName} (${i + 1}/${batches.length})...`;
+                
+                await createPDF(batches[i], currentFileName);
+            }
+
+            statusDiv.innerText = "Concluído! Pronto para o próximo lote.";
+        });
+
+        // Função que gera o PDF (4 imagens por folha, sem esticar)
+        async function createPDF(imageFiles, fileName) {
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            
+            // Dimensões da folha A4 em mm: 210 x 297
+            const margin = 10;
+            const contentWidth = 210 - (margin * 3); // Espaço descontando 3 margens (esq, meio, dir)
+            const contentHeight = 297 - (margin * 3); // Espaço descontando 3 margens (topo, meio, base)
+            
+            const cellWidth = contentWidth / 2;
+            const cellHeight = contentHeight / 2;
+
+            const positions = [
+                { x: margin, y: margin }, // Sup Esq
+                { x: margin * 2 + cellWidth, y: margin }, // Sup Dir
+                { x: margin, y: margin * 2 + cellHeight }, // Inf Esq
+                { x: margin * 2 + cellWidth, y: margin * 2 + cellHeight } // Inf Dir
+            ];
+
+            for (let i = 0; i < imageFiles.length; i++) {
+                // A cada 4 imagens (depois da primeira página), cria uma nova página
+                if (i > 0 && i % 4 === 0) {
+                    pdf.addPage();
+                }
+
+                const positionIndex = i % 4;
+                const imgData = await loadImage(imageFiles[i]);
+
+                // Cálculo para manter a proporção da imagem (sem esticar)
+                const imgRatio = imgData.width / imgData.height;
+                const cellRatio = cellWidth / cellHeight;
+
+                let finalWidth, finalHeight;
+
+                if (imgRatio > cellRatio) {
+                    // Imagem é mais larga proporcionalmente
+                    finalWidth = cellWidth;
+                    finalHeight = cellWidth / imgRatio;
+                } else {
+                    // Imagem é mais alta proporcionalmente
+                    finalHeight = cellHeight;
+                    finalWidth = cellHeight * imgRatio;
+                }
+
+                // Centraliza a imagem no seu respectivo quadrante
+                const xOffset = positions[positionIndex].x + ((cellWidth - finalWidth) / 2);
+                const yOffset = positions[positionIndex].y + ((cellHeight - finalHeight) / 2);
+
+                pdf.addImage(imgData.src, imgData.type, xOffset, yOffset, finalWidth, finalHeight);
+            }
+
+            pdf.save(fileName);
+        }
+
+        // Função auxiliar para carregar o arquivo como uma Imagem utilizável pelo jsPDF
+        function loadImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let imgType = file.type === 'image/png' ? 'PNG' : 'JPEG'; // jsPDF precisa saber o formato
+                        resolve({ src: img.src, type: imgType, width: img.width, height: img.height });
+                    };
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>
