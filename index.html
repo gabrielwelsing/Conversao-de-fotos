@@ -9,6 +9,7 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <style>
         /* --- ESTILOS GERAIS E TEMA ESCURO --- */
         :root {
@@ -366,6 +367,10 @@
             <h2 class="login-title">Acesso Restrito</h2>
             <div id="login-error">Credenciais inválidas.</div>
             <div class="input-group">
+                <input type="text" id="name-input" class="modal-input" placeholder="Seu Nome completo"
+                    style="margin-bottom: 15px; display: none;">
+            </div>
+            <div class="input-group">
                 <input type="email" id="email-input" class="modal-input" placeholder="E-mail"
                     style="margin-bottom: 15px;">
             </div>
@@ -374,16 +379,104 @@
                     style="margin-bottom: 20px;">
             </div>
             <button id="login-btn" class="modal-btn">Entrar</button>
+            <button id="register-btn" class="modal-btn"
+                style="display: none; margin-top: 10px; background: linear-gradient(90deg, #28a745, #20c997);">Cadastrar</button>
+
+            <div style="margin-top: 20px;">
+                <a href="#" id="toggle-register"
+                    style="color: var(--accent-blue); text-decoration: none; font-size: 0.9rem;">Não tem conta?
+                    Solicitar Acesso</a>
+            </div>
+            <button id="login-btn" class="modal-btn">Entrar</button>
         </div>
     </div>
 
     <header>
         <div class="logo-container">
-            <img src="image_0.png" alt="RO Engenharia Logo" class="logo-image">
+            <img src="image_0.png" alt="Pro Engenharia Logo" class="logo-image">
         </div>
         <h1 class="main-title">Conversão Fotos PDF</h1>
-        <button id="logout-btn">Sair</button>
+        <div style="position: absolute; top: 20px; right: 0; display: flex; gap: 10px;">
+            <button id="admin-btn"
+                style="background: rgba(40, 167, 69, 0.2); color: #28a745; border: 1px solid #28a745; padding: 8px 15px; border-radius: 8px; cursor: pointer; font-weight: bold; transition: all 0.3s; display: none;">Painel
+                Admin</button>
+            <button id="logout-btn">Sair</button>
+        </div>
     </header>
+
+    <!-- TELA DE ADMIN -->
+    <div id="admin-overlay" class="hidden"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); z-index: 1500; display: flex; flex-direction: column; align-items: center; padding-top: 50px; overflow-y: auto; opacity: 1; transition: opacity 0.5s ease;">
+        <button id="close-admin-btn"
+            style="position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid white; padding: 8px 15px; border-radius: 8px; cursor: pointer;">Voltar</button>
+        <h2 style="font-size: 2rem; margin-bottom: 30px;">Painel de Aprovação</h2>
+        <div id="users-list" style="width: 90%; max-width: 800px; display: flex; flex-direction: column; gap: 15px;">
+            <div style="text-align: center; color: var(--text-muted);">Carregando usuários...</div>
+        </div>
+    </div>
+    <style>
+        #admin-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .user-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 5px solid var(--warning);
+        }
+
+        .user-card.approved {
+            border-left-color: var(--success);
+        }
+
+        .user-card.rejected {
+            border-left-color: #ff4d4d;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .user-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .user-email {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-approve {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn-reject {
+            background: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
 
     <main class="main-container">
         <div id="drop-zone">
@@ -426,25 +519,99 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const ADMIN_EMAIL = "gabriel.welsing@gmail.com";
 
         // --- AUTH LOGIC ---
         const loginOverlay = document.getElementById('login-overlay');
         const emailInput = document.getElementById('email-input');
         const passwordInput = document.getElementById('password-input');
+        const nameInput = document.getElementById('name-input');
         const loginBtn = document.getElementById('login-btn');
+        const registerBtn = document.getElementById('register-btn');
+        const toggleRegisterBtn = document.getElementById('toggle-register');
         const loginError = document.getElementById('login-error');
         const logoutBtn = document.getElementById('logout-btn');
+        const adminBtn = document.getElementById('admin-btn');
+        const adminOverlay = document.getElementById('admin-overlay');
+        const closeAdminBtn = document.getElementById('close-admin-btn');
+        const usersList = document.getElementById('users-list');
+
+        let isRegisterMode = false;
+
+        // Alternar entre Login e Cadastro
+        toggleRegisterBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            isRegisterMode = !isRegisterMode;
+            if (isRegisterMode) {
+                document.querySelector('.login-title').innerText = 'Solicitar Acesso';
+                nameInput.style.display = 'block';
+                loginBtn.style.display = 'none';
+                registerBtn.style.display = 'block';
+                toggleRegisterBtn.innerText = 'Já tem conta? Fazer Login';
+                loginError.style.display = 'none';
+            } else {
+                document.querySelector('.login-title').innerText = 'Acesso Restrito';
+                nameInput.style.display = 'none';
+                loginBtn.style.display = 'block';
+                registerBtn.style.display = 'none';
+                toggleRegisterBtn.innerText = 'Não tem conta? Solicitar Acesso';
+                loginError.style.display = 'none';
+            }
+        });
 
         // Escutar estado de autenticação
-        auth.onAuthStateChanged((user) => {
+        auth.onAuthStateChanged(async (user) => {
             if (user) {
-                // Logado
-                loginOverlay.classList.add('hidden');
-                logoutBtn.style.display = 'block';
+                // Verificar permissão no Firestore
+                try {
+                    const doc = await db.collection('users').doc(user.uid).get();
+                    if (doc.exists) {
+                        const userData = doc.data();
+                        if (userData.status === 'approved') {
+                            // Acesso permitido
+                            loginOverlay.classList.add('hidden');
+                            logoutBtn.style.display = 'block';
+
+                            // Mostrar botão Admin se for o dono
+                            if (user.email === ADMIN_EMAIL) {
+                                adminBtn.style.display = 'block';
+                            } else {
+                                adminBtn.style.display = 'none';
+                            }
+                        } else if (userData.status === 'pending') {
+                            auth.signOut();
+                            loginError.textContent = 'Seu acesso está em análise. Aguarde a aprovação.';
+                            loginError.style.display = 'block';
+                            loginOverlay.classList.remove('hidden');
+                        } else if (userData.status === 'rejected') {
+                            auth.signOut();
+                            loginError.textContent = 'Acesso negado pelo administrador.';
+                            loginError.style.display = 'block';
+                            loginOverlay.classList.remove('hidden');
+                        }
+                    } else {
+                        // Documento não existe (usuários antigos ou criados no console não terão documento inicialmente)
+                        // Permite acesso se for o admin ou se não existir documento (mantendo compatibilidade com usuários que já usavam o sistema)
+                        loginOverlay.classList.add('hidden');
+                        logoutBtn.style.display = 'block';
+                        if (user.email === ADMIN_EMAIL) {
+                            adminBtn.style.display = 'block';
+                        }
+                    }
+                } catch (error) {
+                    console.error("Erro ao verificar Firestore:", error);
+                    loginError.textContent = 'Erro ao conectar. Tente novamente.';
+                    loginError.style.display = 'block';
+                    auth.signOut();
+                }
             } else {
                 // Não logado
                 loginOverlay.classList.remove('hidden');
                 logoutBtn.style.display = 'none';
+                adminBtn.style.display = 'none';
+                adminOverlay.classList.add('hidden');
             }
         });
 
@@ -479,9 +646,73 @@
                 });
         });
 
+        // Evento de Cadastro
+        registerBtn.addEventListener('click', () => {
+            const name = nameInput.value;
+            const email = emailInput.value;
+            const password = passwordInput.value;
+
+            if (!name || !email || !password) {
+                loginError.textContent = 'Preencha todos os campos.';
+                loginError.style.display = 'block';
+                return;
+            }
+
+            if (password.length < 6) {
+                loginError.textContent = 'A senha deve ter pelo menos 6 caracteres.';
+                loginError.style.display = 'block';
+                return;
+            }
+
+            registerBtn.innerText = 'Enviando...';
+            registerBtn.disabled = true;
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then(async (userCredential) => {
+                    const user = userCredential.user;
+                    // Salvar no Firestore como pendente
+                    await db.collection('users').doc(user.uid).set({
+                        name: name,
+                        email: email,
+                        status: 'pending',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    // Deslogar imediatamente
+                    await auth.signOut();
+
+                    registerBtn.innerText = 'Cadastrar';
+                    registerBtn.disabled = false;
+                    nameInput.value = '';
+                    emailInput.value = '';
+                    passwordInput.value = '';
+
+                    // Mostrar mensagem de sucesso e voltar pra tela de login
+                    toggleRegisterBtn.click();
+                    loginError.textContent = 'Solicitação enviada! Aguarde a aprovação do administrador.';
+                    loginError.style.color = '#28a745';
+                    loginError.style.display = 'block';
+
+                    setTimeout(() => {
+                        loginError.style.color = '#ff4d4d'; // Volta a cor para erros futuros
+                    }, 5000);
+                })
+                .catch((error) => {
+                    console.error('Erro de cadastro:', error);
+                    loginError.textContent = 'Erro ao solicitar acesso. O e-mail já existe?';
+                    loginError.style.display = 'block';
+                    registerBtn.innerText = 'Cadastrar';
+                    registerBtn.disabled = false;
+                });
+        });
+
         passwordInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
-                loginBtn.click();
+                if (isRegisterMode) {
+                    registerBtn.click();
+                } else {
+                    loginBtn.click();
+                }
             }
         });
 
@@ -489,6 +720,79 @@
         logoutBtn.addEventListener('click', () => {
             auth.signOut();
         });
+
+        // --- LÓGICA DO PAINEL ADMIN ---
+        adminBtn.addEventListener('click', () => {
+            adminOverlay.classList.remove('hidden');
+            loadUsers();
+        });
+
+        closeAdminBtn.addEventListener('click', () => {
+            adminOverlay.classList.add('hidden');
+        });
+
+        function loadUsers() {
+            usersList.innerHTML = '<div style="text-align: center; color: var(--text-muted);">Carregando requisições...</div>';
+
+            db.collection('users').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+                usersList.innerHTML = '';
+
+                if (snapshot.empty) {
+                    usersList.innerHTML = '<div style="text-align: center; color: var(--text-muted);">Nenhum usuário cadastrado via painel.</div>';
+                    return;
+                }
+
+                snapshot.forEach((doc) => {
+                    const user = doc.data();
+                    const userId = doc.id;
+
+                    const card = document.createElement('div');
+                    card.className = `user-card ${user.status}`;
+
+                    let statusText = '';
+                    let actionButtons = '';
+
+                    if (user.status === 'pending') {
+                        statusText = '⏳ Pendente';
+                        actionButtons = `
+                            <button class="btn-approve" onclick="updateUserStatus('${userId}', 'approved')">Aprovar</button>
+                            <button class="btn-reject" onclick="updateUserStatus('${userId}', 'rejected')">Recusar</button>
+                        `;
+                    } else if (user.status === 'approved') {
+                        statusText = '✅ Aprovado';
+                        actionButtons = `<button class="btn-reject" onclick="updateUserStatus('${userId}', 'rejected')">Revogar Acesso</button>`;
+                    } else {
+                        statusText = '❌ Recusado';
+                        actionButtons = `<button class="btn-approve" onclick="updateUserStatus('${userId}', 'approved')">Aprovar Acesso</button>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="user-info">
+                            <span class="user-name">${user.name || 'Sem Nome'} <span style="font-size: 0.8rem; font-weight: normal; margin-left: 10px;">${statusText}</span></span>
+                            <span class="user-email">${user.email}</span>
+                        </div>
+                        <div class="admin-actions">
+                            ${actionButtons}
+                        </div>
+                    `;
+                    usersList.appendChild(card);
+                });
+            }, (error) => {
+                console.error("Erro ao carregar usuários:", error);
+                usersList.innerHTML = '<div style="text-align: center; color: #ff4d4d;">Erro ao carregar dados.</div>';
+            });
+        }
+
+        window.updateUserStatus = async function (userId, newStatus) {
+            try {
+                await db.collection('users').doc(userId).update({
+                    status: newStatus
+                });
+            } catch (error) {
+                console.error("Erro ao atualizar status:", error);
+                alert("Erro ao atualizar o status do usuário.");
+            }
+        };
 
         // Elementos da Modal
         const modalOverlay = document.getElementById('modal-overlay');
