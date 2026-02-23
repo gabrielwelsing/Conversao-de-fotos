@@ -405,8 +405,8 @@
     </header>
 
     <!-- TELA DE ADMIN -->
-    <div id="admin-overlay" class="hidden"
-        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); z-index: 1500; display: flex; flex-direction: column; align-items: center; padding-top: 50px; overflow-y: auto; opacity: 1; transition: opacity 0.5s ease;">
+    <div id="admin-overlay"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); z-index: 1500; display: none; flex-direction: column; align-items: center; padding-top: 50px; overflow-y: auto;">
         <button id="close-admin-btn"
             style="position: absolute; top: 20px; left: 20px; background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid white; padding: 8px 15px; border-radius: 8px; cursor: pointer;">Voltar</button>
         <h2 style="font-size: 2rem; margin-bottom: 30px;">Painel de Aprovação</h2>
@@ -415,11 +415,6 @@
         </div>
     </div>
     <style>
-        #admin-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
         .user-card {
             background: var(--bg-card);
             padding: 20px;
@@ -611,7 +606,7 @@
                 loginOverlay.classList.remove('hidden');
                 logoutBtn.style.display = 'none';
                 adminBtn.style.display = 'none';
-                adminOverlay.classList.add('hidden');
+                adminOverlay.style.display = 'none';
             }
         });
 
@@ -723,12 +718,12 @@
 
         // --- LÓGICA DO PAINEL ADMIN ---
         adminBtn.addEventListener('click', () => {
-            adminOverlay.classList.remove('hidden');
+            adminOverlay.style.display = 'flex';
             loadUsers();
         });
 
         closeAdminBtn.addEventListener('click', () => {
-            adminOverlay.classList.add('hidden');
+            adminOverlay.style.display = 'none';
         });
 
         function loadUsers() {
